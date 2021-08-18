@@ -1,4 +1,6 @@
 from scipy.interpolate import BSpline
+from scipy.integrate import quad
+from scipy.integrate import quadrature
 import numpy as np
 import math
 import matplotlib.pyplot as plt
@@ -110,7 +112,85 @@ def pbs(x, knots, boundary_knots = np.array([-math.pi, math.pi]), degree = 3, in
         
     return design_matrix
 
+def bs_lj(r, r_min, r_max, num_of_basis, omega = False):
+    '''
+    Compute the design matrix of a custimized B-spline for Lennard-Jones type     interaction.
+
+    Parameters
+    ----------
+    r: ndarray
+       The sequence of distances at which basis functions are evaluated
+    r_min: float
+       A cutoff distance. When r < r_min, the interaction becomes repulsive and the basis function will provide a postive value. 
+    r_max: flow
+       A cutoff distance. When r > r_max, all basis functions are zeros.
+    num_of_basis: int
+       The number of basis
+    omega: bool
+       If True, the function will also return a matrix omega. Omega[i,j] = \int_{r_min}^{r_max} basis_i.derivative(2)*basis_j.derivative(2) dr. This matrix is useful when fitting a smoothing splines by add a penaly term controling the secondary derivative of splines.
+
+    Returns
+    -------
+    design_matrix: ndarray
+        A matrix of dimension (len(r), num_of_basis)
+    omega: matrix
+        A matrix containing the integral of the splines' second derivatives
+    '''
+    
+    ## degree of spline    
+    degree = 3
+
+    ## knots of cubic spline
+    t = np.linspace(r_min, r_max + (r_max - r_min), num_of_basis*2 + 3)
+
+    ## number of basis
+    n = len(t) - 2 + degree + 1
+
+    ## preappend and append knots
+    t = np.concatenate(
+        (np.array([r_min for i in range(degree)]),
+         t,
+         np.array([r_max + (r_max - r_min) for i in range(degree)])
+        ))
+
+    spl_list = []
+    for i in range(n):
+        c = np.zeros(n)
+        c[i] = 1.0
+        spl_list.append(BSpline(t, c, degree, extrapolate = True))
+
+    spl_list = spl_list[:-(n//2+2)]    
+    spl_list = [spl_list[i] for i in range(len(spl_list)) if i != 1]    
+
+    design_matrix = []
+    for i in range(len(spl_list)):
+        u = spl_list[i](r)
+        if i != 0:
+            u[r <= r_min] = 0.
+        design_matrix.append(u)
+    design_matrix = np.array(design_matrix).T
+
+    if omega:
+        omega = np.zeros((len(spl_list), len(spl_list)))
+        for i in range(len(spl_list)):
+            for j in range(i, len(spl_list)):
+                print(i,j)
+                spl_i = spl_list[i].derivative(2)
+                spl_j = spl_list[j].derivative(2)        
+                omega[i,j] = quad(lambda x: spl_i(x)*spl_j(x), r_min, r_max, limit = 10_000)[0]
+                omega[j,i] = omega[i,j]
+                
+        omega[0,:] = 0.0
+        omega[:,0] = 0.0
+        
+        return design_matrix, omega
+
+    else:
+        return design_matrix
+    
+
 if __name__ == "__main__":
+    ## testing functions bs and pbs
     knots = np.linspace(start = -math.pi, stop = math.pi, num = 10)
     knots = knots[1:-1]
     boundary_knots = np.array([-math.pi, math.pi])
@@ -134,4 +214,27 @@ if __name__ == "__main__":
     plt.legend()
     plt.tight_layout()
     fig.savefig("./output/design_matrix_pbs.pdf")
+    
+    ## test the function bs_lj
+    r_min, r_max = 0.3, 2.0
+    num_of_basis = 12
+
+    r = np.linspace(r_min - 0.05, r_max + 1.0, 1000)
+    design_matrix, omega = bs_lj(r, r_min, r_max, num_of_basis, True)
+
+    fig, axes = plt.subplots()
+    for j in range(design_matrix.shape[-1]):
+        plt.plot(r, design_matrix[:,j], label = f"{j}")
+
+    t = np.linspace(r_min, r_max + (r_max - r_min), num_of_basis*2 + 3)
+    for i in range(len(t)):
+        if t[i] <= r_max:
+            plt.axvline(t[i], linestyle = '--')
+    plt.legend()
+    plt.tight_layout()
+    fig.savefig("./output/design_matrix_bs_lj.pdf")
+
+
+
+    
     
