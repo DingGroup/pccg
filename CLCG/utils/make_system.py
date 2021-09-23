@@ -125,32 +125,78 @@ def make_system(masses, coor_transformer, bonded_parameters, T):
 
         ## angle force between other particles        
         angle_parameters = bonded_parameters['angle']
+        ua = np.array([angle_parameters[i]['U'] for i in range(len(angle_parameters))])
+        func = omm.Continuous2DFunction(xsize = ua.shape[0],
+                                        ysize = ua.shape[1],
+                                        values = ua.reshape(-1, order = 'F'),
+                                        xmin = 0.0, xmax = float(ua.shape[0] - 1),
+                                        ymin = 0.0, ymax = np.pi,
+                                        periodic = False)
+        angle_force = omm.CustomCompoundBondForce(3, f"(ua(idx, angle(p1, p2, p3)) + log(sin(pi - angle(p1, p2, p3))))*Kb*T")
+        angle_force.addGlobalParameter('Kb', Kb)
+        angle_force.addGlobalParameter('T', T)
+        angle_force.addGlobalParameter('pi', math.pi)            
+        angle_force.addTabulatedFunction("ua", func)
+        angle_force.addPerBondParameter('idx')
+        
         for i in range(len(coor_transformer.particle_visited_in_order)):
             p = coor_transformer.particle_visited_in_order[i]
             p1, p2, p3 = coor_transformer.angle_particle_idx[p]
-            f = omm.Continuous1DFunction(angle_parameters[i]['U'], 0.0, np.pi, periodic = False)
-            angle_force = omm.CustomCompoundBondForce(3, f"(ua_{i}(angle(p1, p2, p3)) + log(sin(pi - angle(p1, p2, p3))))*Kb*T")
-            angle_force.addGlobalParameter('Kb', Kb)
-            angle_force.addGlobalParameter('T', T)
-            angle_force.addGlobalParameter('pi', math.pi)            
-            angle_force.addTabulatedFunction(f"ua_{i}", f)
-            angle_force.addBond([p1, p2, p3])
+            angle_force.addBond([p1, p2, p3], [float(i)])
             angle_force.setForceGroup(0)
-            system.addForce(angle_force)
-    
+        system.addForce(angle_force)
+        
+        # ## angle force between other particles        
+        # angle_parameters = bonded_parameters['angle']
+        # for i in range(len(coor_transformer.particle_visited_in_order)):
+        #     p = coor_transformer.particle_visited_in_order[i]
+        #     p1, p2, p3 = coor_transformer.angle_particle_idx[p]
+        #     f = omm.Continuous1DFunction(angle_parameters[i]['U'], 0.0, np.pi, periodic = False)
+        #     angle_force = omm.CustomCompoundBondForce(3, f"(ua_{i}(angle(p1, p2, p3)) + log(sin(pi - angle(p1, p2, p3))))*Kb*T")
+        #     angle_force.addGlobalParameter('Kb', Kb)
+        #     angle_force.addGlobalParameter('T', T)
+        #     angle_force.addGlobalParameter('pi', math.pi)            
+        #     angle_force.addTabulatedFunction(f"ua_{i}", f)
+        #     angle_force.addBond([p1, p2, p3])
+        #     angle_force.setForceGroup(0)
+        #     system.addForce(angle_force)
+
     ## torsion force
     dihedral_parameters = bonded_parameters['dihedral']
+    ud = np.array([dihedral_parameters[i]['U'] for i in range(len(dihedral_parameters))] +
+                  [dihedral_parameters[0]['U']])
+    func = omm.Continuous2DFunction(xsize = ud.shape[0],
+                                    ysize = ud.shape[1],
+                                    values = ud.reshape(-1, order = 'F'),
+                                    xmin = 0.0, xmax = float(ud.shape[0] - 1),
+                                    ymin = -np.pi, ymax = np.pi,
+                                    periodic = True)
+    dihedral_force = omm.CustomCompoundBondForce(4, f"(ud(idx, dihedral(p1, p2, p3, p4)))*Kb*T")
+    dihedral_force.addGlobalParameter('Kb', Kb)
+    dihedral_force.addGlobalParameter('T', T)
+    dihedral_force.addTabulatedFunction("ud", func)
+    dihedral_force.addPerBondParameter('idx')
+
     for i in range(len(coor_transformer.particle_visited_in_order)):
         p = coor_transformer.particle_visited_in_order[i]
         p1, p2, p3, p4 = coor_transformer.dihedral_particle_idx[p]
-        f = omm.Continuous1DFunction(dihedral_parameters[i]['U'], -np.pi, np.pi, periodic = True)
-        torsion = omm.CustomCompoundBondForce(4, f"ud_{i}(dihedral(p1, p2, p3, p4))*Kb*T")
-        torsion.addGlobalParameter('Kb', Kb)
-        torsion.addGlobalParameter('T', T)    
-        torsion.addTabulatedFunction(f"ud_{i}", f)
-        torsion.addBond([p1, p2, p3, p4])
-        torsion.setForceGroup(0)
-        system.addForce(torsion)
+        dihedral_force.addBond([p1, p2, p3, p4], [float(i)])
+        dihedral_force.setForceGroup(0)
+    system.addForce(dihedral_force)
+        
+    # ## torsion force
+    # dihedral_parameters = bonded_parameters['dihedral']
+    # for i in range(len(coor_transformer.particle_visited_in_order)):
+    #     p = coor_transformer.particle_visited_in_order[i]
+    #     p1, p2, p3, p4 = coor_transformer.dihedral_particle_idx[p]
+    #     f = omm.Continuous1DFunction(dihedral_parameters[i]['U'], -np.pi, np.pi, periodic = True)
+    #     torsion = omm.CustomCompoundBondForce(4, f"ud_{i}(dihedral(p1, p2, p3, p4))*Kb*T")
+    #     torsion.addGlobalParameter('Kb', Kb)
+    #     torsion.addGlobalParameter('T', T)    
+    #     torsion.addTabulatedFunction(f"ud_{i}", f)
+    #     torsion.addBond([p1, p2, p3, p4])
+    #     torsion.setForceGroup(0)
+    #     system.addForce(torsion)
 
     system.addForce(omm.CMMotionRemover())
     
