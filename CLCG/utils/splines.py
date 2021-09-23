@@ -174,7 +174,6 @@ def bs_lj(r, r_min, r_max, num_of_basis, omega = False):
         omega = np.zeros((len(spl_list), len(spl_list)))
         for i in range(len(spl_list)):
             for j in range(i, len(spl_list)):
-                print(i,j)
                 spl_i = spl_list[i].derivative(2)
                 spl_j = spl_list[j].derivative(2)        
                 omega[i,j] = quad(lambda x: spl_i(x)*spl_j(x), r_min, r_max, limit = 10_000)[0]

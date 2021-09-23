@@ -5,13 +5,33 @@ import simtk.unit as unit
 
 def contrastive_learning(log_q_noise, log_q_data,
                          basis_noise, basis_data):
+
+    """
+    Contrastive learning coefficients
+
+    Parameters
+    ----------
+    log_q_noise: 1-dimensional tensor
+        the logrithm of probability density for noise data under the noise distribution
+    log_q_data: 1-dimensional tensor
+        the logrithm of probability density for target data under the noise distribution
+    basis_noise: 2-dimensional tensor
+        the design matrix contraining basis values of noise data for compute the logrithm of probablity density for the target distribution
+    basis_data: 2-dimensional tensor
+        the design matrix contraining basis values of target data for compute the logrithm of probablity density for the target distribution
+
+    Returns
+    -------
+    alpha: 
+    
+    """
     
     assert(basis_noise.shape[-1] == basis_data.shape[-1])
     assert(len(log_q_noise) == basis_noise.shape[0])
     assert(len(log_q_data) == basis_data.shape[0])
 
     basis_size = basis_noise.shape[-1]
-    alphas = torch.randn(basis_size)
+    alphas = torch.zeros(basis_size)
     F = torch.zeros(1)
     
     x_init = np.concatenate([alphas.data.numpy(), F])
