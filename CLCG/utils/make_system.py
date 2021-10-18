@@ -1,7 +1,7 @@
 import numpy as np
-import simtk.openmm as omm
-import simtk.unit as unit
-import simtk.openmm.app as ommapp
+import openmm as omm
+import openmm.unit as unit
+import openmm.app as ommapp
 import math
 import mdtraj
 import pickle
@@ -10,7 +10,13 @@ import sys
 sys.path.append("/home/gridsan/dingxq/my_package_on_github/MMFlow")
 from MMFlow import utils
 
-def make_system(masses, coor_transformer, bonded_parameters, T):
+def make_system(masses,
+                coor_transformer,
+                bonded_parameters,
+                T,
+                exclude_angle_particle_index = [],
+                exclude_dihedral_particle_index = [],
+                jacobian = False):
     
     ## add particles
     system = omm.System()
@@ -37,7 +43,10 @@ def make_system(masses, coor_transformer, bonded_parameters, T):
     system.addForce(bond_force_ref_2)
 
     ## bond force between reference particle 3 and reference particle 1
-    bond_force_ref_3 = omm.CustomBondForce("(0.5*kb*(r - b0)^2 + log(r))*Kb*T")
+    if jacobian:
+        bond_force_ref_3 = omm.CustomBondForce("(0.5*kb*(r - b0)^2 + log(r))*Kb*T")
+    else:
+        bond_force_ref_3 = omm.CustomBondForce("(0.5*kb*(r - b0)^2)*Kb*T")        
     bond_force_ref_3.addGlobalParameter("Kb", Kb)
     bond_force_ref_3.addGlobalParameter("T", T)
     bond_force_ref_3.addPerBondParameter('b0')
@@ -52,7 +61,10 @@ def make_system(masses, coor_transformer, bonded_parameters, T):
     system.addForce(bond_force_ref_3)
 
     ## bond force between other particles
-    bond_force = omm.CustomBondForce("(0.5*kb*(r - b0)^2 + 2*log(r))*Kb*T")
+    if jacobian:
+        bond_force = omm.CustomBondForce("(0.5*kb*(r - b0)^2 + 2*log(r))*Kb*T")
+    else:
+        bond_force = omm.CustomBondForce("(0.5*kb*(r - b0)^2)*Kb*T")        
     bond_force.addGlobalParameter("Kb", Kb)
     bond_force.addGlobalParameter("T", T)
     bond_force.addPerBondParameter('b0')
@@ -77,34 +89,48 @@ def make_system(masses, coor_transformer, bonded_parameters, T):
         angle_force_between_reference_particles.addGlobalParameter('T', T)
         angle_force_between_reference_particles.addPerAngleParameter('a0')
         angle_force_between_reference_particles.addPerAngleParameter('ka')
-        angle_force_between_reference_particles.addAngle(
-            coor_transformer.ref_particle_2,
-            coor_transformer.ref_particle_1,
-            coor_transformer.ref_particle_3,
-            [bonded_parameters['reference_particle_3_angle']['a0'],
-             bonded_parameters['reference_particle_3_angle']['ka']]
-        )
+        if not (coor_transformer.ref_particle_1 in exclude_angle_particle_index and
+                coor_transformer.ref_particle_2 in exclude_angle_particle_index and
+                coor_transformer.ref_particle_3 in exclude_angle_particle_index):
+            angle_force_between_reference_particles.addAngle(
+                coor_transformer.ref_particle_2,
+                coor_transformer.ref_particle_1,
+                coor_transformer.ref_particle_3,
+                [bonded_parameters['reference_particle_3_angle']['a0'],
+                 bonded_parameters['reference_particle_3_angle']['ka']]
+            )
         angle_force_between_reference_particles.setForceGroup(0)
         system.addForce(angle_force_between_reference_particles)
-        
-        angle_force = omm.CustomAngleForce("(0.5*ka*(theta - a0)^2 + log(sin(pi - theta)))*Kb*T")
+
+        if jacobian:
+            angle_force = omm.CustomAngleForce("(alpha*0.5*ka*(theta - a0)^2 + log(sin(pi - theta)))*Kb*T; pi=3.14159265357")
+        else:
+            angle_force = omm.CustomAngleForce("(alpha*0.5*ka*(theta - a0)^2)*Kb*T")
         angle_force.addGlobalParameter('Kb', Kb)
         angle_force.addGlobalParameter('T', T)
-        angle_force.addGlobalParameter('pi', math.pi)
         angle_force.addPerAngleParameter('a0')
         angle_force.addPerAngleParameter('ka')
+        angle_force.addPerAngleParameter('alpha')
 
-        for i in range(len(coor_transformer.particle_visited_in_order)):
+        for pi in range(len(coor_transformer.particle_visited_in_order)):
             p = coor_transformer.particle_visited_in_order[i]
             p1 = coor_transformer.angle_particle_idx[p][0]
             p2 = coor_transformer.angle_particle_idx[p][1]
-            p3 = coor_transformer.angle_particle_idx[p][2]    
+            p3 = coor_transformer.angle_particle_idx[p][2]
+            if (p1 in exclude_angle_particle_index and
+                p2 in exclude_angle_particle_index and
+                p3 in exclude_angle_particle_index):
+                alpha = 0.0
+            else:
+                alpha = 1.0
+                
             angle_force.addAngle(
                 p1,
                 p2,
                 p3,
                 [float(bonded_parameters['angle']['a0'][i]),
-                 float(bonded_parameters['angle']['ka'][i])]
+                 float(bonded_parameters['angle']['ka'][i]),
+                 alpha]
             )
         angle_force.setForceGroup(0)        
         system.addForce(angle_force)
@@ -116,10 +142,13 @@ def make_system(masses, coor_transformer, bonded_parameters, T):
         angle_force_between_reference_particles.addGlobalParameter('Kb', Kb)
         angle_force_between_reference_particles.addGlobalParameter('T', T)
         angle_force_between_reference_particles.addTabulatedFunction(f"ua_between_ref", f)
-        angle_force_between_reference_particles.addBond(
-            [coor_transformer.ref_particle_2,
-             coor_transformer.ref_particle_1,
-             coor_transformer.ref_particle_3])
+        if not (coor_transformer.ref_particle_1 in exclude_angle_particle_index and
+                coor_transformer.ref_particle_2 in exclude_angle_particle_index and
+                coor_transformer.ref_particle_3 in exclude_angle_particle_index):            
+            angle_force_between_reference_particles.addBond(
+                [coor_transformer.ref_particle_2,
+                 coor_transformer.ref_particle_1,
+                 coor_transformer.ref_particle_3])
         angle_force_between_reference_particles.setForceGroup(0)
         system.addForce(angle_force_between_reference_particles)
 
@@ -132,18 +161,34 @@ def make_system(masses, coor_transformer, bonded_parameters, T):
                                         xmin = 0.0, xmax = float(ua.shape[0] - 1),
                                         ymin = 0.0, ymax = np.pi,
                                         periodic = False)
-        angle_force = omm.CustomCompoundBondForce(3, f"(ua(idx, angle(p1, p2, p3)) + log(sin(pi - angle(p1, p2, p3))))*Kb*T")
+        if jacobian:
+            angle_force = omm.CustomCompoundBondForce(
+                3,
+                f"(alpha*ua(idx, angle(p1, p2, p3)) + log(sin(pi - angle(p1, p2, p3))))*Kb*T; pi = 3.14159265357"
+            )
+        else:
+            angle_force = omm.CustomCompoundBondForce(
+                3,
+                f"(alpha*ua(idx, angle(p1, p2, p3)))*Kb*T"
+            )
+            
         angle_force.addGlobalParameter('Kb', Kb)
         angle_force.addGlobalParameter('T', T)
-        angle_force.addGlobalParameter('pi', math.pi)            
         angle_force.addTabulatedFunction("ua", func)
         angle_force.addPerBondParameter('idx')
+        angle_force.addPerBondParameter('alpha')
         
         for i in range(len(coor_transformer.particle_visited_in_order)):
             p = coor_transformer.particle_visited_in_order[i]
             p1, p2, p3 = coor_transformer.angle_particle_idx[p]
-            angle_force.addBond([p1, p2, p3], [float(i)])
-            angle_force.setForceGroup(0)
+            if (p1 in exclude_angle_particle_index and
+                p2 in exclude_angle_particle_index and
+                p3 in exclude_angle_particle_index):
+                alpha = 0.0
+            else:
+                alpha = 1.0
+            angle_force.addBond([p1, p2, p3], [float(i), alpha])            
+        angle_force.setForceGroup(0)
         system.addForce(angle_force)
         
         # ## angle force between other particles        
@@ -171,17 +216,25 @@ def make_system(masses, coor_transformer, bonded_parameters, T):
                                     xmin = 0.0, xmax = float(ud.shape[0] - 1),
                                     ymin = -np.pi, ymax = np.pi,
                                     periodic = True)
-    dihedral_force = omm.CustomCompoundBondForce(4, f"(ud(idx, dihedral(p1, p2, p3, p4)))*Kb*T")
+    dihedral_force = omm.CustomCompoundBondForce(4, f"(alpha*ud(idx, dihedral(p1, p2, p3, p4)))*Kb*T")
     dihedral_force.addGlobalParameter('Kb', Kb)
     dihedral_force.addGlobalParameter('T', T)
     dihedral_force.addTabulatedFunction("ud", func)
     dihedral_force.addPerBondParameter('idx')
+    dihedral_force.addPerBondParameter('alpha')    
 
     for i in range(len(coor_transformer.particle_visited_in_order)):
         p = coor_transformer.particle_visited_in_order[i]
         p1, p2, p3, p4 = coor_transformer.dihedral_particle_idx[p]
-        dihedral_force.addBond([p1, p2, p3, p4], [float(i)])
-        dihedral_force.setForceGroup(0)
+        if (p1 in exclude_dihedral_particle_index and
+            p2 in exclude_dihedral_particle_index and
+            p3 in exclude_dihedral_particle_index and                
+            p4 in exclude_dihedral_particle_index):
+            alpha = 0.0
+        else:
+            alpha = 1.0
+        dihedral_force.addBond([p1, p2, p3, p4], [float(i), alpha])
+    dihedral_force.setForceGroup(0)
     system.addForce(dihedral_force)
         
     # ## torsion force

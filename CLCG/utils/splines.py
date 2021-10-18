@@ -4,31 +4,31 @@ from scipy.integrate import quadrature
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+import torch
 
 def bs(x, knots, boundary_knots, degree = 3, intercept = False):
-    """
-    Generate the B-spline basis matrix for a polynomial spline.
+    """ Generate the B-spline basis matrix for a polynomial spline.
+
     This function mimick the function bs in R package splines
 
-    Parameters
-    ----------
-    x : ndarray
-        The sequence of values at which basis functions are evaludated
-    knots: ndarray
-        the internal breakpoints that define the spline.
-    boundary_knots: ndarray
-        Boundary points at which to anchor the B-spline basis
-    degree: int, optional
-        The degree of the piecewise polynomial. The default is '3' for cubic splines.
-    intercept: bool, optional
-        If True, an intercept is included in the basis; default is False.
+    Args:
+        x (Tensor): Values at which basis functions are evaludated.
+        knots (Tensor): Internal breakpoints that define the spline.
+        boundary_knots (Tensor): Boundary points 
+        degree (int, optional): The degree of the piecewise polynomial. 
+            The default is 3 for cubic splines.
+        intercept (bool, optional): If True, an intercept is included 
+            in the basis. Default is False.
     
     Returns:
-    --------
-    design_matrix: ndarray
-        A matrix of dimension (len(x), df), where df = len(knots) + degree if intercept
-        = False, df = len(knots) + degree + 1 if intercept = True.
+        design_matrix (Tensor): A tensor of dimension (len(x), df), 
+            where df = len(knots) + degree if intercept = False, 
+            df = len(knots) + degree + 1 if intercept = True.
     """
+
+    knots = knots.numpy()
+    boundary_knots = boundary_knots.numpy()
+    x = x.numpy()
     
     knots = np.concatenate([knots, boundary_knots])
     knots.sort()
@@ -52,33 +52,34 @@ def bs(x, knots, boundary_knots, degree = 3, intercept = False):
     ## see https://cran.r-project.org/web/packages/crs/vignettes/spline_primer.pdf
     if intercept is False:
         design_matrix = design_matrix[:, 1:]
-        
+
+    design_matrix = torch.from_numpy(design_matrix)
+
     return design_matrix
-    
-def pbs(x, knots, boundary_knots = np.array([-math.pi, math.pi]), degree = 3, intercept = False):
-    """
-    Compute the design matrix of a periodic B-spline. 
+
+def pbs(x, knots, boundary_knots = torch.tensor([-math.pi, math.pi]), degree = 3, intercept = False):
+    """ Compute the design matrix of a periodic B-spline. 
+
     This function mimick the pbs function in R package pbs.
 
-    Parameters
-    ----------
-    x : ndarray
-        The sequence of values at which basis functions are evaludated
-    knots: ndarray
-        the internal breakpoints that define the spline.
-    boundary_knots: ndarray
-        Boundary points at which to anchor the B-spline basis
-    degree: int, optional
-        The degree of the piecewise polynomial. The default is '3' for cubic splines.
-    intercept: bool, optional
-        If True, an intercept is included in the basis; default is False.
-    
+    Args:
+        x (Tensor): Values at which basis functions are evaludated.
+        knots (Tensor): Internal breakpoints that define the spline.
+        boundary_knots (Tensor): Boundary points 
+        degree (int, optional): The degree of the piecewise polynomial. 
+            The default is 3 for cubic splines.
+        intercept (bool, optional): If True, an intercept is included 
+            in the basis. Default is False.
+
     Returns:
-    --------
-    design_matrix: ndarray
-        A matrix of dimension (len(x), df), where df = len(knots) if intercept
-        = False, df = len(knots) + 1 if intercept = True
+        design_matrix (Tensor): A tensor of dimension (len(x), df), 
+            where df = len(knots) if intercept = False, 
+            df = len(knots) + 1 if intercept = True.
     """
+
+    knots = knots.numpy()
+    boundary_knots = boundary_knots.numpy()
+    x = x.numpy()
     
     knots = np.concatenate([knots, boundary_knots])
     knots.sort()
@@ -109,33 +110,37 @@ def pbs(x, knots, boundary_knots = np.array([-math.pi, math.pi]), degree = 3, in
     ## see https://cran.r-project.org/web/packages/crs/vignettes/spline_primer.pdf
     if intercept is False:
         design_matrix = design_matrix[:, 1:]
-        
+
+    design_matrix = torch.from_numpy(design_matrix)
+    
     return design_matrix
 
 def bs_lj(r, r_min, r_max, num_of_basis, omega = False):
-    '''
-    Compute the design matrix of a custimized B-spline for Lennard-Jones type     interaction.
+    ''' Compute the design matrix of a custimized B-spline 
+    for Lennard-Jones type interaction.
 
-    Parameters
-    ----------
-    r: ndarray
-       The sequence of distances at which basis functions are evaluated
-    r_min: float
-       A cutoff distance. When r < r_min, the interaction becomes repulsive and the basis function will provide a postive value. 
-    r_max: flow
-       A cutoff distance. When r > r_max, all basis functions are zeros.
-    num_of_basis: int
-       The number of basis
-    omega: bool
-       If True, the function will also return a matrix omega. Omega[i,j] = \int_{r_min}^{r_max} basis_i.derivative(2)*basis_j.derivative(2) dr. This matrix is useful when fitting a smoothing splines by add a penaly term controling the secondary derivative of splines.
+    Args:
+        r (Tensor): Distances at which basis functions are evaluated.
+        r_min (float): A cutoff distance. 
+            When r < r_min, the interaction becomes repulsive and 
+            the basis function will provide a postive value. 
+        r_max (float): A cutoff distance. 
+            When r > r_max, all basis functions are zeros.
+        num_of_basis (int): The number of basis.
+        omega (bool): Integral of secondary derivatives.
+            If True, the function will also return a matrix omega.
+            Omega[i,j] = \int_{r_min}^{r_max} 
+                         basis_i.derivative(2)*basis_j.derivative(2) dr. 
+            This matrix is useful when fitting a smoothing splines
+            by addding a penaly term controling the secondary 
+            derivative of splines.
 
-    Returns
-    -------
-    design_matrix: ndarray
-        A matrix of dimension (len(r), num_of_basis)
-    omega: matrix
-        A matrix containing the integral of the splines' second derivatives
+    Returns:
+        design_matrix (Tensor): A matrix of dimension (len(r), num_of_basis).
+        omega (Tensor): A matrix containing the integral of the splines' 
+            second derivatives
     '''
+    r = r.numpy()
     
     ## degree of spline    
     degree = 3
@@ -175,30 +180,29 @@ def bs_lj(r, r_min, r_max, num_of_basis, omega = False):
         for i in range(len(spl_list)):
             for j in range(i, len(spl_list)):
                 spl_i = spl_list[i].derivative(2)
-                spl_j = spl_list[j].derivative(2)        
+                spl_j = spl_list[j].derivative(2)
                 omega[i,j] = quad(lambda x: spl_i(x)*spl_j(x), r_min, r_max, limit = 10_000)[0]
                 omega[j,i] = omega[i,j]
                 
         omega[0,:] = 0.0
         omega[:,0] = 0.0
         
-        return design_matrix, omega
+        return torch.from_numpy(design_matrix), torch.from_numpy(omega)
 
     else:
-        return design_matrix
+        return torch.from_numpy(design_matrix)
     
-
 if __name__ == "__main__":
     ## testing functions bs and pbs
-    knots = np.linspace(start = -math.pi, stop = math.pi, num = 10)
+    knots = torch.linspace(start = -math.pi, end = math.pi, steps = 10)
     knots = knots[1:-1]
-    boundary_knots = np.array([-math.pi, math.pi])
+    boundary_knots = torch.tensor([-math.pi, math.pi])
     
-    x = np.linspace(start = -math.pi, stop = math.pi, num = 200)
+    x = torch.linspace(start = -math.pi, end = math.pi, steps = 200)
     degree = 3
 
-    design_matrix_bs = bs(x, knots, boundary_knots, degree)
-    design_matrix_pbs = pbs(x, knots, boundary_knots, degree)
+    design_matrix_bs = bs(x, knots, boundary_knots, degree).numpy()
+    design_matrix_pbs = pbs(x, knots, boundary_knots, degree).numpy()
     
     fig, axes = plt.subplots()
     for j in range(design_matrix_bs.shape[-1]):
@@ -206,6 +210,7 @@ if __name__ == "__main__":
     plt.legend()
     plt.tight_layout()
     fig.savefig("./output/design_matrix_bs.pdf")
+    plt.close()
     
     fig, axes = plt.subplots()
     for j in range(design_matrix_pbs.shape[-1]):
@@ -213,12 +218,13 @@ if __name__ == "__main__":
     plt.legend()
     plt.tight_layout()
     fig.savefig("./output/design_matrix_pbs.pdf")
+    plt.close()
     
     ## test the function bs_lj
     r_min, r_max = 0.3, 2.0
     num_of_basis = 12
 
-    r = np.linspace(r_min - 0.05, r_max + 1.0, 1000)
+    r = torch.linspace(r_min - 0.05, r_max + 1.0, 1000)
     design_matrix, omega = bs_lj(r, r_min, r_max, num_of_basis, True)
 
     fig, axes = plt.subplots()
@@ -232,8 +238,7 @@ if __name__ == "__main__":
     plt.legend()
     plt.tight_layout()
     fig.savefig("./output/design_matrix_bs_lj.pdf")
-
-
-
+    plt.close()    
+    
     
     
