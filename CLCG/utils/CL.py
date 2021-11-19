@@ -51,12 +51,14 @@ def contrastive_learning(log_q_noise, log_q_data,
         log_p_data = - (u_data - F) - torch.log(nu)
         log_p_noise = - (u_noise - F) - torch.log(nu)
 
-        logit = torch.stack(
-            [ torch.cat([log_q_noise, log_q_data]),
-              torch.cat([log_p_noise, log_p_data])]
-            ).t()        
-        target = torch.cat([torch.zeros_like(log_q_noise), torch.ones_like(log_q_data)]).long()
-        loss = torch.nn.functional.cross_entropy(logit, target)    
+        log_q = torch.cat([log_q_noise, log_q_data])
+        log_p = torch.cat([log_p_noise, log_p_data])
+
+        logit = log_p - log_q
+        target = torch.cat([torch.zeros_like(log_q_noise),
+                            torch.ones_like(log_q_data)])
+        loss = torch.nn.functional.binary_cross_entropy_with_logits(
+            logit, target)               
         loss.backward()
         
         grad = torch.cat([alphas.grad, F.grad[None]]).numpy()
@@ -71,7 +73,7 @@ def contrastive_learning(log_q_noise, log_q_data,
     alphas = x[0:basis_size]
     F = x[-1]
 
-    return alphas, F
+    return torch.from_numpy(alphas), F
 
 def contrastive_learning_numpy(log_q_noise, log_q_data,
                                basis_noise, basis_data):

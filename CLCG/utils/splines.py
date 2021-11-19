@@ -191,6 +191,53 @@ def bs_lj(r, r_min, r_max, num_of_basis, omega = False):
 
     else:
         return torch.from_numpy(design_matrix)
+
+def bs_rmsd(r, r_max, num_of_basis):
+    ''' Compute the design matrix of a custimized B-spline 
+    for a biasing potential on RMSD.
+
+    Args:
+        r (Tensor): Distances at which basis functions are evaluated.
+        r_max (float): A cutoff distance. 
+            When r > r_max, all basis functions are zeros.
+        num_of_basis (int): The number of basis.
+    Returns:
+        design_matrix (Tensor): A matrix of dimension (len(r), num_of_basis).
+    '''
+    r = r.numpy()
+    
+    ## degree of spline    
+    degree = 3
+
+    ## knots of cubic spline
+    r_min = 0.0
+    t = np.linspace(r_min, r_max + (r_max - r_min), num_of_basis*2 + 2)
+
+    ## number of basis
+    n = len(t) - 2 + degree + 1
+
+    ## preappend and append knots
+    t = np.concatenate(
+        (np.array([r_min for i in range(degree)]),
+         t,
+         np.array([r_max + (r_max - r_min) for i in range(degree)])
+        ))
+
+    spl_list = []
+    for i in range(n):
+        c = np.zeros(n)
+        c[i] = 1.0
+        spl_list.append(BSpline(t, c, degree, extrapolate = True))
+
+    spl_list = spl_list[:-(n//2+2)]    
+
+    design_matrix = []
+    for i in range(len(spl_list)):
+        u = spl_list[i](r)
+        design_matrix.append(u)
+    design_matrix = np.array(design_matrix).T
+
+    return torch.from_numpy(design_matrix)
     
 if __name__ == "__main__":
     ## testing functions bs and pbs
@@ -238,6 +285,26 @@ if __name__ == "__main__":
     plt.legend()
     plt.tight_layout()
     fig.savefig("./output/design_matrix_bs_lj.pdf")
+    plt.close()    
+
+    ## test the function bs_rmsd
+    r_min, r_max = 0.0, 2.0
+    num_of_basis = 12
+
+    r = torch.linspace(0.0, r_max + 1.0, 1000)
+    design_matrix = bs_rmsd(r, r_max, num_of_basis)
+
+    fig, axes = plt.subplots()
+    for j in range(design_matrix.shape[-1]):
+        plt.plot(r, design_matrix[:,j], label = f"{j}")
+        
+    t = np.linspace(r_min, r_max + (r_max - r_min), num_of_basis*2 + 3)
+    for i in range(len(t)):
+        if t[i] <= r_max:
+            plt.axvline(t[i], linestyle = '--')
+    plt.legend()
+    plt.tight_layout()
+    fig.savefig("./output/design_matrix_bs_rmsd.pdf")
     plt.close()    
     
     
