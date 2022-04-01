@@ -65,11 +65,11 @@ for k in range(num_steps):
             accept_prop = torch.exp((alphas[i] - alphas[i-1])*(energy[i] - energy[i-1]))
             accept_flag = torch.rand(1) < accept_prop
             if accept_flag.item():
-                tmp = x[i]
+                tmp = x[i].clone()
                 x[i] = x[i-1]
                 x[i-1] = tmp
 
-                tmp = energy[i]
+                tmp = energy[i].clone()
                 energy[i] = energy[i-1]
                 energy[i-1] = tmp
         if k >= 100000:
