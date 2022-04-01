@@ -4,7 +4,10 @@ from scipy import optimize
 import simtk.unit as unit
 
 def contrastive_learning(log_q_noise, log_q_data,
-                         basis_noise, basis_data):
+                         basis_noise, basis_data,
+                         options = {'disp': True,
+                                    'gtol': 1e-5}
+):
 
     """
     Contrastive learning coefficients
@@ -66,9 +69,20 @@ def contrastive_learning(log_q_noise, log_q_data,
         return loss.item(), grad
 
     loss, grad = compute_loss_and_grad(x_init)
-    x, f, d = optimize.fmin_l_bfgs_b(compute_loss_and_grad,
-                                     x_init,
-                                     iprint = 1)
+    
+    
+    results = optimize.minimize(compute_loss_and_grad,
+                                x_init,
+                                jac=True,
+                                method='L-BFGS-B',
+                                options = options)
+    x = results['x']
+    
+    # x, f, d = optimize.fmin_l_bfgs_b(compute_loss_and_grad,
+    #                                  x_init,
+    #                                  iprint = 1,
+    #                                  pgtol = 1e-6,
+    #                                  factr = 100)
 
     alphas = x[0:basis_size]
     F = x[-1]

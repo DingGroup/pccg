@@ -26,7 +26,7 @@ x2_min, x2_max = data['x2_min'], data['x2_max']
 num_reps = 10
 alphas = torch.linspace(0.0, alpha, num_reps)
 
-num_steps = 510000
+num_steps = 5100000
 x_record = []
 accept_rate = 0
 x = torch.stack((x1_min + torch.rand(num_reps)*(x1_max - x1_min),
@@ -35,7 +35,7 @@ x = torch.stack((x1_min + torch.rand(num_reps)*(x1_max - x1_min),
 energy = compute_Muller_potential(1.0, x)
 
 for k in range(num_steps):
-    if (k + 1) % 500 == 0:
+    if (k + 1) % 10000 == 0:
         print("idx of steps: {}".format(k))
         
     ## sampling within each replica
@@ -72,7 +72,7 @@ for k in range(num_steps):
                 tmp = energy[i]
                 energy[i] = energy[i-1]
                 energy[i-1] = tmp
-        if k >= 10000:
+        if k >= 100000:
             x_record.append(x.clone().numpy())
 
 x_record = np.array(x_record)

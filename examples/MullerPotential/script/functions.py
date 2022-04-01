@@ -102,7 +102,6 @@ def compute_cubic_spline_basis(x, extent = (x1_min, x1_max, x2_min, x2_max)):
     
     return y
 
-
 if __name__ == "__main__":
     x = generate_grid(x1_min, x1_max, x2_min, x2_max)
     fig, axes = plt.subplots()
@@ -110,16 +109,19 @@ if __name__ == "__main__":
     U = compute_Muller_potential(alpha, x)
     U = U.reshape(100, 100)
 #    U[U>15] = np.nan
-    U[U>15] = 15
+    U[U>9] = 9
     U = U.T
-    plt.contourf(U, levels = 30, extent = (x1_min, x1_max, x2_min, x2_max), cmap = cm.viridis_r)
+    plt.contourf(U,
+                 levels = np.linspace(-9, 9, 19),                                               
+                 extent = (x1_min, x1_max, x2_min, x2_max),
+                 cmap = cm.viridis_r)
     plt.xlabel(r"$x_1$", fontsize = 24)
     plt.ylabel(r"$x_2$", fontsize = 24)
+    plt.tick_params(which='both', bottom=False, top=False, right = False, left = False, labelbottom=False, labelleft=False)    
+#    plt.savefig("./output/true_muller_energy_alpha_{:.3f}.png".format(alpha))
     plt.colorbar()
     plt.tight_layout()
     axes.set_aspect('equal')
-    plt.tick_params(which='both', bottom=False, top=False, right = False, left = False, labelbottom=False, labelleft=False)    
-#    plt.savefig("./output/true_muller_energy_alpha_{:.3f}.png".format(alpha))
     plt.savefig("./output/true_muller_energy_alpha_{:.3f}.eps".format(alpha))    
 
     with open("./output/range.pkl", 'wb') as file_handle:

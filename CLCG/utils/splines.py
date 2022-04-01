@@ -253,8 +253,8 @@ if __name__ == "__main__":
     
     fig, axes = plt.subplots()
     for j in range(design_matrix_bs.shape[-1]):
-        plt.plot(x, design_matrix_bs[:,j], label = f"{j}")
-    plt.legend()
+        plt.plot(x, design_matrix_bs[:,j], label = f"{j}", linewidth = 3)
+    #plt.legend()
     plt.tight_layout()
     fig.savefig("./output/design_matrix_bs.pdf")
     plt.close()
