@@ -68,8 +68,6 @@ def compute_basis(x, x1_knots, x2_knots, x1_boundary_knots, x2_boundary_knots):
 xp_basis = compute_basis(xp, x1_knots, x2_knots, x1_boundary_knots, x2_boundary_knots)
 xq_basis = compute_basis(xq, x1_knots, x2_knots, x1_boundary_knots, x2_boundary_knots)
 
-exit()
-
 log_q_noise = q_dist.log_prob(xq)
 log_q_data = q_dist.log_prob(xp)
 
