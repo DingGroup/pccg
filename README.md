@@ -1,2 +1,2 @@
-# CLCG
-Contrastive Learning Coarse Graining
+# PC
+Potential Contrasting
