@@ -3,18 +3,29 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Potential Contrasting's documentation!
+Welcome to Potential Contrasting!
 =================================================
+
+Potential contrasting can learn a potential energy function using an ensemble 
+of molecular conformations such that the learned potential energy can reproduce
+the conformational distribution. An example use of potential contrasting is to 
+learn coarse-grained force fields using molecular conformations generated
+by all-atom simulations.
+
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   
+   get_started
+   examples
+   docs
+   
 
 
 
-Indices and tables
-==================
+.. Indices and tables
+.. ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. * :ref:`genindex`
+.. * :ref:`modindex`
+.. * :ref:`search`

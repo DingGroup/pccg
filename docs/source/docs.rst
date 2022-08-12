@@ -1,0 +1,6 @@
+.. _docs:
+
+Documentation
+=============
+
+
