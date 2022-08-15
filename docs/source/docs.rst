@@ -3,6 +3,7 @@
 Documentation
 =============
 
-.. autofunction:: PC.utils.splines.bs
+.. automodule:: PC.utils.splines
+   :members:
 
 
