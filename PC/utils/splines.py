@@ -6,7 +6,6 @@ import math
 import matplotlib.pyplot as plt
 import torch
 
-
 def bs(x, knots, boundary_knots, degree=3, intercept=False):
     """Generate the B-spline basis matrix for a polynomial spline.
 
@@ -16,9 +15,9 @@ def bs(x, knots, boundary_knots, degree=3, intercept=False):
         x (Tensor): Values at which basis functions are evaluated.
         knots (Tensor): Internal breakpoints that define the spline.
         boundary_knots (Tensor): Boundary points
-        degree (int, optional): The degree of the piecewise polynomial.
+        degree (int, default = 3): The degree of the piecewise polynomial.
             The default is 3, which corresponds to cubic splines.
-        intercept (bool, optional): If set to ``True``, an intercept is included
+        intercept (bool, default = ``False``): If set to ``True``, an intercept is included
             in the basis. Default is ``False``.
 
     Returns:
@@ -149,16 +148,16 @@ def bs_lj(r, r_min, r_max, num_of_basis, omega=False):
         omega (bool): Integral of secondary derivatives.
             If set to ``True``, the function will also return a matrix :math:`\Omega`,
             where :math:`\Omega(i,j) = \int_{r_\mathrm{min}}^{r_\mathrm{max}}
-            basis_i.derivative(2)*basis_j.derivative(2)` dr.            
-
+            N_i''(r)*N_j''(r) \mathrm{d}r`.
             This matrix is useful when fitting a smoothing splines
             by addding a penaly term controling the secondary
             derivative of splines.
 
     Returns:
         The design matrix, which is a matrix of dimension (len(r), num_of_basis).
-        If `omega`omega (Tensor): A matrix containing the integral of the splines'
-        second derivatives
+        If `omega` is set to ``True``, the function returns a tuple (mat_a, mat_b),
+        where mat_a is the design matrix and mat_b is the the :math:`\Omega`
+        matrix containing the integral of spline basis functions' second derivatives.
     """
     r = r.numpy()
 
@@ -226,8 +225,9 @@ def bs_rmsd(r, r_max, num_of_basis):
         r_max (float): A cutoff distance.
             When r > r_max, all basis functions are zeros.
         num_of_basis (int): The number of basis.
+
     Returns:
-        design_matrix (Tensor): A matrix of dimension (len(r), num_of_basis).
+        The design matrix of dimension (len(r), num_of_basis).
     """
     r = r.numpy()
 
