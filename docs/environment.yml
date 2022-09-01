@@ -15,4 +15,6 @@ dependencies:
   - cvxpy
   - ffmpeg
   - sphinx
+  - pip
+  
 prefix: /home/xqding/apps/miniconda3
