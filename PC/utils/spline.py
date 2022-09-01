@@ -22,8 +22,8 @@ def bs(x, knots, boundary_knots, degree=3, intercept=False):
 
     Returns:
         The design matrix, which is a tensor of dimension (len(x), df),
-        where df = len(knots) + degree if intercept is ``False``,
-        df = len(knots) + degree + 1 if intercept is ``True``.
+        where df = len(knots) + 2 + degree  if intercept is ``False``,
+        df = len(knots) + 2 + degree + 1 if intercept is ``True``.
     """
 
     knots = knots.numpy()
