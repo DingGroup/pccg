@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 from scipy import optimize
-import simtk.unit as unit
 from collections import namedtuple
 
 def NCE(log_q_noise, log_q_data,
