@@ -16,6 +16,7 @@ dependencies:
   - ffmpeg
   - sphinx
   - pip=22.2.2
+  - sphinx-copybutton
   - pip:
     - sphinx-book-theme==0.3.3
     - sphinx-copybutton==0.5.0
