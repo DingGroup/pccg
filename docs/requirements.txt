@@ -5,4 +5,4 @@ scipy>=1.2.0
 torch==1.8.0
 numpy==1.21.0
 matplotlib==3.5.0
-conda==4.13
+conda==4.3.16
