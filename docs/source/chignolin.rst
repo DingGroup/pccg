@@ -1,7 +1,7 @@
 .. _chignolin:
 
-Fold the mini-protein Chignolin
-===============================
+Fold the mini-protein, chignolin
+=================================
 
 .. image:: ../../examples/chignolin/data/2RVD.png
   :width: 200
@@ -33,4 +33,71 @@ You can visualize the trajectory by loading it together with the topology file i
 
 2. Convert the all-atom trajectory into a coarse-grained one
 ------------------------------------------------------------
+
+First we need to choose a coarse-grained representation for the force field.
+Here we choose to represent each amino acid residue with just one particle
+fixed at the residue's :math:`\alpha` carbon atom postion.
+With this coarse-grained representation, let us convert the all-atom trajectory
+into a coarse-grained one, which will be used as training data.
+
+.. code-block:: python
+
+   import numpy as np
+   import matplotlib as mpl
+   import matplotlib.pyplot as plt
+   import mdtraj
+   import os
+   import scipy
+   import scipy.optimize as optimize
+   import scipy.cluster.hierarchy
+   from scipy.spatial.distance import squareform
+   import torch
+   import math
+   import openmm
+   import openmm.unit as unit
+   import openmm.app as ommapp
+   import time
+   from sys import exit
+   
+   #### convert the all atom trajectory into a coarse-grained one
+   top_aa = mdtraj.load_prmtop('./data/cln025_all_atom.prmtop')
+   traj_aa = mdtraj.load_dcd('./data/cln025_all_atom.dcd', top_aa, stride = 10)
+   
+   alpha_carbon_atom_indices = []
+   for atom in top_aa.atoms:
+       if atom.name == 'CA':
+           alpha_carbon_atom_indices.append(atom.index)
+   traj_cg = traj_aa.atom_slice(alpha_carbon_atom_indices)
+   
+   os.makedirs('./output/', exist_ok = True)
+   traj_cg.save_dcd('./output/cln025_cg.dcd')
+
+		
+We can visualize the coarse-grained trajectory by projecting conformations into
+a low dimensional space spanned by collective variables such as the
+RMSD (root-mean-squared-distance) with respect to the folded conformations.
+
+.. code-block:: python
+
+   top_cg = mdtraj.load_psf('./data/cln025_cg.psf')
+   traj_cg = mdtraj.load_dcd('./output/cln025_cg.dcd', top_cg)
+   
+   ref_pdb = mdtraj.load_pdb('./data/cln025_reference.pdb')
+   ref_pdb = ref_pdb.atom_slice(alpha_carbon_atom_indices)
+   ref_traj = mdtraj.Trajectory(ref_pdb.xyz, topology = top_cg)
+   rmsd = mdtraj.rmsd(traj_cg, ref_traj)
+   
+   fig = plt.figure()
+   fig.clf()
+   plt.hist(rmsd, bins = 30, density = True, range = (0, 0.8), color = 'C1', label = 'All atom')
+   plt.legend()
+   plt.xlabel('RMSD (nm)')
+   plt.ylabel('Probablity density')
+   plt.tight_layout()
+   plt.savefig('./output/rmsd_hist_all_atom.png')
+   plt.close()
+   
+
+.. image:: ../../examples/chignolin/output/rmsd_hist_all_atom.png
+  :width: 400
 

@@ -1,46 +1,56 @@
-__date__ = "2022/09/03 01:23:54"
-
 import numpy as np
 import matplotlib as mpl
-mpl.use('Agg')
 import matplotlib.pyplot as plt
-mpl.rc('font', size = 16)
-mpl.rc('axes', titlesize = 'large', labelsize = 'large')
-mpl.rc('xtick', labelsize = 'large')
-mpl.rc('ytick', labelsize = 'large')
 import mdtraj
 import os
-from sys import exit
 import scipy
 import scipy.optimize as optimize
 import scipy.cluster.hierarchy
 from scipy.spatial.distance import squareform
 import torch
 import math
-import sys
-sys.path.append('/home/xqding/my_projects_on_github/PC/')
-import PC
 import openmm
 import openmm.unit as unit
 import openmm.app as ommapp
 import time
+from sys import exit
 
 #### convert the all atom trajectory into a coarse-grained one
-top_aa = mdtraj.load_prmtop('./data/cln025.prmtop')
+top_aa = mdtraj.load_prmtop('./data/cln025_all_atom.prmtop')
+traj_aa = mdtraj.load_dcd('./data/cln025_all_atom.dcd', top_aa, stride = 10)
+
 alpha_carbon_atom_indices = []
 for atom in top_aa.atoms:
     if atom.name == 'CA':
         alpha_carbon_atom_indices.append(atom.index)
-
-top_cg = top_aa.subset(alpha_carbon_atom_indices)
-for i in range(top_cg.n_atoms - 1):
-    top_cg.add_bond(top_cg.atom(i), top_cg.atom(i+1))
-    
-traj_aa = mdtraj.load_dcd('./data/cln025_all_atom.dcd', top_aa, stride = 10)
 traj_cg = traj_aa.atom_slice(alpha_carbon_atom_indices)
+
 os.makedirs('./output/', exist_ok = True)
 traj_cg.save_dcd('./output/cln025_cg.dcd')
+
+# top_cg = top_aa.subset(alpha_carbon_atom_indices)
+# for i in range(top_cg.n_atoms - 1):
+#     top_cg.add_bond(top_cg.atom(i), top_cg.atom(i+1))
+
+top_cg = mdtraj.load_psf('./data/cln025_cg.psf')
 traj_cg = mdtraj.load_dcd('./output/cln025_cg.dcd', top_cg)
+
+ref_pdb = mdtraj.load_pdb('./data/cln025_reference.pdb')
+ref_pdb = ref_pdb.atom_slice(alpha_carbon_atom_indices)
+ref_traj = mdtraj.Trajectory(ref_pdb.xyz, topology = top_cg)
+rmsd = mdtraj.rmsd(traj_cg, ref_traj)
+
+fig = plt.figure()
+fig.clf()
+plt.hist(rmsd, bins = 30, density = True, range = (0, 0.8), color = 'C1', label = 'All atom')
+plt.legend()
+plt.xlabel('RMSD (nm)')
+plt.ylabel('Probablity density')
+plt.tight_layout()
+plt.savefig('./output/rmsd_hist_all_atom.png')
+plt.close()
+
+exit()
 
 n_atoms = top_cg.n_atoms
 
@@ -81,18 +91,18 @@ for i in range(bonded_terms['angle']['indices'].shape[0]):
     
     angle_noise = torch.rand(len(angle_data))*math.pi
 
-    basis_data = PC.spline.bs(angle_data, angle_knots, angle_boundary_knots)
-    basis_noise = PC.spline.bs(angle_noise, angle_knots, angle_boundary_knots)
+    basis_data = pccg.spline.bs(angle_data, angle_knots, angle_boundary_knots)
+    basis_noise = pccg.spline.bs(angle_noise, angle_knots, angle_boundary_knots)
 
     log_q_data = torch.ones_like(angle_data)*math.log(1./math.pi)
     log_q_noise = torch.ones_like(angle_noise)*math.log(1./math.pi)    
 
-    theta, dF = PC.NCE(log_q_noise, log_q_data,
+    theta, dF = pccg.NCE(log_q_noise, log_q_data,
                        basis_noise, basis_data,
                        verbose = False)
     
     angle_grid = torch.linspace(0, math.pi, 100)
-    basis_grid = PC.spline.bs(angle_grid, angle_knots, angle_boundary_knots)
+    basis_grid = pccg.spline.bs(angle_grid, angle_knots, angle_boundary_knots)
     energy_grid = torch.matmul(basis_grid, theta)
 
     bonded_terms['angle']['grid'].append(angle_grid)
@@ -117,18 +127,18 @@ for i in range(bonded_terms['dihedral']['indices'].shape[0]):
 
     dihedral_noise = torch.distributions.Uniform(-math.pi, math.pi).sample((len(dihedral_data),))    
 
-    basis_data = PC.spline.pbs(dihedral_data, dihedral_knots, dihedral_boundary_knots)
-    basis_noise = PC.spline.pbs(dihedral_noise, dihedral_knots, dihedral_boundary_knots)
+    basis_data = pccg.spline.pbs(dihedral_data, dihedral_knots, dihedral_boundary_knots)
+    basis_noise = pccg.spline.pbs(dihedral_noise, dihedral_knots, dihedral_boundary_knots)
 
     log_q_data = torch.ones_like(dihedral_data)*math.log(1./(2*math.pi))
     log_q_noise = torch.ones_like(dihedral_noise)*math.log(1./(2*math.pi))    
 
-    theta, dF = PC.NCE(log_q_noise, log_q_data,
+    theta, dF = pccg.NCE(log_q_noise, log_q_data,
                        basis_noise, basis_data,
                        verbose = False)
     
     dihedral_grid = torch.linspace(-math.pi, math.pi, 100)
-    basis_grid = PC.spline.pbs(dihedral_grid, dihedral_knots, dihedral_boundary_knots)
+    basis_grid = pccg.spline.pbs(dihedral_grid, dihedral_knots, dihedral_boundary_knots)
     energy_grid = torch.matmul(basis_grid, theta)
 
     bonded_terms['dihedral']['grid'].append(dihedral_grid)
@@ -330,7 +340,7 @@ for i in range(bonded_terms['angle']['indices'].shape[0]):
     angle = torch.from_numpy(angle)
     angle.clamp_(0, math.pi)
 
-    basis = PC.spline.bs(angle, angle_knots, angle_boundary_knots)
+    basis = pccg.spline.bs(angle, angle_knots, angle_boundary_knots)
     bonded_terms['angle']['basis'].append(basis)
     
 
@@ -342,7 +352,7 @@ for i in range(bonded_terms['dihedral']['indices'].shape[0]):
     dihedral = torch.from_numpy(dihedral)
     dihedral.clamp_(-math.pi, math.pi)
 
-    basis = PC.spline.pbs(dihedral, dihedral_knots, dihedral_boundary_knots)
+    basis = pccg.spline.pbs(dihedral, dihedral_knots, dihedral_boundary_knots)
     bonded_terms['dihedral']['basis'].append(basis)
 
 #### compute basis for nonbonded interactions
@@ -372,13 +382,13 @@ for i in range(nonbonded_terms['indices'].shape[0]):
     distance = torch.from_numpy(distance)
     distance.clamp_min_(0.0)    
 
-    basis = PC.spline.bs_lj(distance,
+    basis = pccg.spline.bs_lj(distance,
                             nonbonded_terms['r_rep_on'][i],
                             nonbonded_terms['r_off'][i],
                             num_of_basis = 12)    
 
     distance_grid = torch.linspace(0.2, nonbonded_terms['r_off'][i], 100)
-    basis_grid, omega = PC.spline.bs_lj(distance_grid,
+    basis_grid, omega = pccg.spline.bs_lj(distance_grid,
                                         nonbonded_terms['r_rep_on'][i],
                                         nonbonded_terms['r_off'][i],
                                         num_of_basis = 12,
