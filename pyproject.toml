@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "PCCG"
+name = "pccg"
 version = "0.0.1"
 authors = [
   { name="Xinqiang Ding", email="dingxq@mit.edu" },
@@ -27,3 +27,8 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/ZhangGroup-MITChemistry/PC.git"
 # "Bug Tracker" = "https://github.com/pypa/sampleproject/issues"
+
+[tool.hatch.build]
+exclude = [
+  "examples/*",
+]
