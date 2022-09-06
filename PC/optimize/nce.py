@@ -64,7 +64,7 @@ def NCE(log_q_noise, log_q_data,
 
     loss, grad = compute_loss_and_grad(x_init)
 
-    options={"disp": verbose, "gtol": 1e-6},    
+    options={"disp": verbose, "gtol": 1e-6}
     results = optimize.minimize(
         compute_loss_and_grad, x_init, jac=True, method="L-BFGS-B", options=options
     )

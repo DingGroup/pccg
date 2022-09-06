@@ -7,4 +7,5 @@ Examples
 .. toctree::
    :maxdepth: 1
 
-   muller_potential	      
+   muller_potential
+   chignolin
