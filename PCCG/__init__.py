@@ -1,2 +1,2 @@
-from PC.utils import spline
-from PC.optimize.nce import NCE
+from PCCG.utils import spline
+from PCCG.optimize.nce import NCE

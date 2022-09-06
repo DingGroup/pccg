@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "PC"
+name = "PCCG"
 version = "0.0.1"
 authors = [
   { name="Xinqiang Ding", email="dingxq@mit.edu" },
   { name="Bin Zhang", email="binz@mit.edu"}
 ]
-description = "Potential Contrasting"
+description = "Potential Contrasting Coarse Graining"
 readme = "README.md"
 license = { file="LICENSE" }
 requires-python = ">=3.7"
