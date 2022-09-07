@@ -23,7 +23,7 @@ copyright = '2022, Xinqiang Ding; Bin Zhang'
 author = 'Xinqiang Ding; Bin Zhang'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = ''
 
 
 # -- General configuration ---------------------------------------------------
