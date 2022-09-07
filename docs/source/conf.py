@@ -55,11 +55,15 @@ exclude_patterns = []
 #
 #html_theme = 'alabaster'
 html_theme = 'sphinx_book_theme'
+html_logo = "../logo.png"
+html_title = "Potential Contrasting documentation"
 
 html_theme_options = {
-    "repository_url": "https://github.com/xqding/PC",
+    "repository_url": "https://github.com/ZhangGroup-MITChemistry/PC",
     "use_repository_button": True,
 }
+
+
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
