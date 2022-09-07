@@ -14,6 +14,7 @@ import openmm.unit as unit
 import openmm.app as ommapp
 import time
 from sys import exit
+import pccg
 
 #### convert the all atom trajectory into a coarse-grained one
 top_aa = mdtraj.load_prmtop('./data/cln025_all_atom.prmtop')
@@ -50,10 +51,7 @@ plt.tight_layout()
 plt.savefig('./output/rmsd_hist_all_atom.png')
 plt.close()
 
-exit()
-
 n_atoms = top_cg.n_atoms
-
 bonded_terms = {
     'bond': {'indices': np.array([[i,i+1] for i in range(n_atoms - 1)])},
     'angle': {'indices': np.array([[i,i+1,i+2] for i in range(n_atoms - 2)])},
@@ -61,9 +59,6 @@ bonded_terms = {
 }
 
 #### fit parameters for bonds
-k = unit.BOLTZMANN_CONSTANT_kB*unit.AVOGADRO_CONSTANT_NA
-T = 360.47 * unit.kelvin
-kT = (k*T).value_in_unit(unit.kilojoule_per_mole)
 
 bonded_terms['bond']['b0'] = []
 bonded_terms['bond']['kb'] = []
@@ -159,6 +154,10 @@ for res in top_cg.residues:
     print(res.name, aa_mass[res.name])
     sys_im.addParticle(aa_mass[res.name])
 
+k = unit.BOLTZMANN_CONSTANT_kB*unit.AVOGADRO_CONSTANT_NA
+T = 360.47 * unit.kelvin
+kT = (k*T).value_in_unit(unit.kilojoule_per_mole)
+    
 #### add bond force
 bond_force = openmm.CustomBondForce("(0.5*kb*(r - b0)^2 + alpha*log(r))*kT")
 bond_force.addGlobalParameter('kT', kT)
@@ -284,6 +283,8 @@ for j in range(bond_cg.shape[1]):
              density = True, color = 'C0', alpha = 0.5, label = 'All atom')
     plt.hist(bond_im[:,j], bins = 30, range = (bond_min, bond_max),
              density = True, color = 'C1', alpha = 0.5, label = 'CG_im')
+    plt.xlabel('Bond length (nm)')
+    plt.ylabel('Probability density')    
     plt.title(f'Bond {j}-{j+1}')
     plt.legend()
     plt.tight_layout()
@@ -295,7 +296,9 @@ for j in range(angle_cg.shape[1]):
              density = True, color = 'C0', alpha = 0.5, label = 'All atom')
     plt.hist(angle_im[:,j], bins = 30, range = (0, math.pi),
              density = True, color = 'C1', alpha = 0.5, label = 'CG_im')
-    plt.title(f'Angle {j}-{j+1}-{j+2}')    
+    plt.title(f'Angle {j}-{j+1}-{j+2}')
+    plt.xlabel('Angle (radian)')
+    plt.ylabel('Probability density')        
     plt.legend()
     plt.tight_layout()    
     idx_plot += 1
@@ -306,12 +309,14 @@ for j in range(dihedral_cg.shape[1]):
              density = True, color = 'C0', alpha = 0.5, label = 'All atom')
     plt.hist(dihedral_im[:,j], bins = 30, range = (-math.pi, math.pi),
              density = True, color = 'C1', alpha = 0.5, label = 'CG_im')
-    plt.title(f'Dihedral {j}-{j+1}-{j+2}-{j+3}')        
+    plt.title(f'Dihedral {j}-{j+1}-{j+2}-{j+3}')
+    plt.xlabel('Dihedral (radian)')
+    plt.ylabel('Probability density')            
     plt.legend()
     plt.tight_layout()    
     idx_plot += 1
     
-plt.savefig('./output/bad_hist_im.pdf')
+plt.savefig('./output/bad_hist_im.png')
 plt.close()
 
 traj = mdtraj.join([traj_cg, traj_im])
