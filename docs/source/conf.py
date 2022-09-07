@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('../../'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'pccg'
+project = 'Potential Contrasting'
 copyright = '2022, Xinqiang Ding; Bin Zhang'
 author = 'Xinqiang Ding; Bin Zhang'
 
