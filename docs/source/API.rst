@@ -1,6 +1,6 @@
 .. _docs:
 
-Documentation
+API
 =============
 
 .. autofunction:: pccg.spline.bs

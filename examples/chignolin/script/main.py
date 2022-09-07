@@ -319,6 +319,22 @@ for j in range(dihedral_cg.shape[1]):
 plt.savefig('./output/bad_hist_im.png')
 plt.close()
 
+rmsd_data = mdtraj.rmsd(traj_cg, ref_traj)
+rmsd_noise = mdtraj.rmsd(traj_im, ref_traj)
+
+fig = plt.figure()
+fig.clf()
+plt.hist(rmsd_data, bins = 30, density = True, range = (0, 0.8), color = 'C1', label = 'All atom', alpha = 0.5)
+plt.hist(rmsd_noise, bins = 30, density = True, range = (0, 0.8), color = 'C0', label = 'CG_im', alpha = 0.5)
+plt.legend()
+plt.xlabel('RMSD (nm)')
+plt.ylabel('Probablity density')
+plt.tight_layout()
+plt.savefig('./output/rmsd_hist_aa_vs_im.png')
+plt.close()
+
+exit()
+
 traj = mdtraj.join([traj_cg, traj_im])
 n_data = traj_cg.n_frames
 n_noise = traj_im.n_frames

@@ -6,11 +6,7 @@
 Welcome to Potential Contrasting!
 =================================================
 
-Potential contrasting can learn a potential energy function using an ensemble 
-of molecular conformations such that the learned potential energy can reproduce
-the conformational distribution. An example use of potential contrasting is to 
-learn coarse-grained force fields using molecular conformations generated
-by all-atom simulations.
+`Potential contrasting <https://arxiv.org/abs/2205.10861>`_ is an efficient method for learning a potential energy function that can reproduce an ensemble of molecular conformations. It can be easily applied to can learn coarse-grained force fields based on all-atom simulations. It generalizes the `noise contrastive esitmation method <https://proceedings.mlr.press/v9/gutmann10a>`_ to use complex unnormalized noise distributions constructed using molecular dynamics techniques such as `umbrella sampling <https://en.wikipedia.org/wiki/Umbrella_sampling>`_.
 
 
 .. toctree::
@@ -18,7 +14,7 @@ by all-atom simulations.
    
    get_started
    examples
-   docs
+   API
    
 
 

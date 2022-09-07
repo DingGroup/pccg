@@ -400,3 +400,14 @@ We can compare distributions of internal coordinates between data (the all-atom 
    plt.close()
    
 .. image:: ../../examples/chignolin/output/bad_hist_im.png
+
+From the above plot, we see that the coarse-grained energy
+function with just bonded terms reproduces the marginal distribution
+of every internal coordinate. However, reproducing marginal distributions
+does not guarantee that the energy function reproduces the conformational
+ensemble. One way to see that is comparing the distribution of RMSD between
+data and noise samples, as shown below.
+	   
+.. image:: ../../examples/chignolin/output/rmsd_hist_aa_vs_im.png
+
+
