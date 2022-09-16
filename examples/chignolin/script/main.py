@@ -333,7 +333,6 @@ plt.tight_layout()
 plt.savefig('./output/rmsd_hist_aa_vs_im.png')
 plt.close()
 
-exit()
 
 traj = mdtraj.join([traj_cg, traj_im])
 n_data = traj_cg.n_frames
@@ -419,8 +418,9 @@ for i in range(nonbonded_terms['indices'].shape[0]):
     nonbonded_terms['theta'].append(torch.zeros(basis.shape[1], dtype = torch.float64))
     nonbonded_terms['basis_grid'].append(basis_grid)
     nonbonded_terms['omega'].append(omega)
+
     
- #### compute log_q
+#### compute log_q
 log_q = []
 for k in range(traj.n_frames):
     xyz = traj.xyz[k]
@@ -428,6 +428,154 @@ for k in range(traj.n_frames):
     state = context.getState(getEnergy = True)
     log_q.append(-state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)/kT)
 log_q = torch.tensor(log_q)
+
+
+dF = torch.zeros(1, dtype = torch.float64)
+
+X = torch.cat(
+    [x for x in bonded_terms['angle']['basis']] + \
+    [x for x in bonded_terms['dihedral']['basis']] + \
+    [x for x in nonbonded_terms['basis']] + \
+    [-torch.ones(traj.n_frames, 1) ],
+    dim = 1
+)
+
+H_decay = [ torch.zeros(len(p), len(p)) for p in bonded_terms['angle']['theta'] ] + \
+          [ torch.zeros(len(p), len(p)) for p in bonded_terms['dihedral']['theta'] ] + \
+          [ omega for omega in nonbonded_terms['omega'] ] + \
+          [ torch.zeros(1,1) ]
+H_decay = torch.block_diag(*H_decay)
+
+
+def _gather_param():
+    thetas = [ p for p in bonded_terms['angle']['theta'] ] + \
+             [ p for p in bonded_terms['dihedral']['theta'] ] + \
+             [ p for p in nonbonded_terms['theta'] ] + \
+             [ dF ]
+    return thetas
+
+thetas = torch.cat(_gather_param())
+
+def compute_loss_and_grad(thetas, weight_decay):
+    u = torch.mv(X, thetas) + bond_energy
+    log_p = - u + u.new_tensor(n_data/n_noise).log()
+    logit = log_p - log_q
+    loss = torch.nn.functional.binary_cross_entropy_with_logits(
+        logit, target)
+    loss = loss + 0.5*weight_decay*torch.sum(thetas*torch.mv(H_decay, thetas))
+    
+    p = torch.sigmoid(logit)
+    grad = torch.mv(X.t(), target - p)/X.shape[0] + weight_decay*torch.mv(H_decay, thetas)
+    
+    return loss, grad
+
+def compute_hessian(thetas, weight_decay):
+    u = torch.mv(X, thetas) + bond_energy
+    log_p = - u + u.new_tensor(n_data/n_noise).log()
+    logit = log_p - log_q
+    p = torch.sigmoid(logit)
+    w = p*(1-p)
+    H = torch.matmul(X.t(), w[:,None]*X) + weight_decay*H_decay
+    return H
+
+exit()
+    
+
+def _minimize_with_Newton_method(func, h_func, x_init, args, verbose):
+    ## stopping criteria
+    eps = 1e-12
+    ## constants used in backtracking line search
+    alpha, beta = 0.01, 0.2
+
+    ## Newton's method for minimizing the likelihood loss function
+    max_iter = 300  ## maximium number of iterations
+    indx_iter = 0
+
+    N_func = 0
+    N_grad = 0
+    if verbose:
+        print(
+            "============================================================================"
+        )
+
+        print(
+            "                     RUNNING THE NEWTON'S METHOD                          \n"
+        )
+        print(
+            "                                * * *                                     \n"
+        )
+        print(
+            f"                         Tolerance EPS = {eps:.5E}                        \n"
+        )
+        print(
+            f"Backtracking line search parameters: alpha = {alpha:.2f}, beta = {beta:.2f}\n"
+        )
+
+    x = x_init
+    while indx_iter < max_iter:
+        loss, grad = func(x, *args)
+        N_func += 1
+        N_grad += 1
+        H = h_func(x, *args)
+        newton_direction = torch.linalg.solve(H, -grad)
+        newton_decrement_square = torch.sum(-grad * newton_direction)
+
+        if verbose:
+            print(
+                f"At iterate {indx_iter:4d}    f= {loss.item():.5E}    |1/2*Newton_decrement^2|: {newton_decrement_square.item()/2:.5E}\n"
+            )
+
+        if newton_decrement_square / 2.0 <= eps:
+            break
+
+        ## backtracking line search
+        max_ls_iter = 100
+        step_size = 1.0
+
+        indx_ls_iter = 0
+        while indx_ls_iter < max_ls_iter:
+            target_loss = func(
+                x + step_size * newton_direction, *args
+            )
+            N_func += 1
+            approximate_loss = loss + step_size * alpha * (-newton_decrement_square)
+            if target_loss < approximate_loss:
+                break
+            else:
+                step_size = step_size * beta
+            indx_ls_iter += 1
+
+        x = x + step_size * newton_direction
+        indx_iter += 1
+
+    if verbose:
+        print("N_iter   = total number of iterations")
+        print("N_func   = total number of function evaluations")
+        print("N_grad   = total number of gradient evaluations")
+        print("F        = final function value \n")
+        print("             * * *     \n")
+        print("N_iter    N_func    N_grad        F")
+        print(f"{indx_iter:6d}    {N_func:6d}    {N_grad:6d}    {loss.item():.6E}")
+        print(f"  F = {loss.item():.12f} \n")
+
+        if newton_decrement_square / 2.0 <= eps and indx_iter < max_iter:
+            print("CONVERGENCE: 1/2*Newton_decrement^2 < EPS")
+        else:
+            print("CONVERGENCE: NUM_OF_ITERATION REACH MAX_ITERATION")
+    return {"x": x}
+
+
+weight_decay = 1e-7
+res = _minimize_with_Newton_method(
+    compute_loss_and_grad,
+    compute_hessian,
+    thetas,
+    [weight_decay],
+    True)
+
+exit()
+
+
 
 dF = torch.zeros(1, requires_grad = True, dtype = torch.float64)
 def _gather_param():
@@ -578,3 +726,4 @@ plt.savefig('./output/rmsd_hist_{T:.2f}.pdf')
 pplt.close()
 
 exit()
+
