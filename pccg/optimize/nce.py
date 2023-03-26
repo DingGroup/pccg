@@ -6,6 +6,7 @@ from collections import namedtuple
 def NCE(log_q_noise, log_q_data,
         basis_noise, basis_data,
         verbose = True,
+        options={"maxiter": 1000}
 ):
 
     """
@@ -64,9 +65,12 @@ def NCE(log_q_noise, log_q_data,
 
     loss, grad = compute_loss_and_grad(x_init)
 
-    options={"disp": verbose, "gtol": 1e-6}
+    _options ={"disp": verbose, "gtol": 1e-6}
+    for k,v in options.items():
+        _options[k] = v
+
     results = optimize.minimize(
-        compute_loss_and_grad, x_init, jac=True, method="L-BFGS-B", options=options
+        compute_loss_and_grad, x_init, jac=True, method="L-BFGS-B", options=_options
     )
     x = results["x"]
 

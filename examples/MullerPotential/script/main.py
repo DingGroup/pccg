@@ -173,9 +173,11 @@ x1_noise = torch.rand(n_noise) * (x1_max - x1_min) + x1_min
 x2_noise = torch.rand(n_noise) * (x2_max - x2_min) + x2_min
 x_noise = torch.stack((x1_noise, x2_noise), dim=1)
 
-#### learn an energy function
-import PC
 
+#### learn an energy function
+import sys
+sys.path.append("../../")
+import pccg
 
 def compute_2d_cubic_spline_basis(
     x, M1=10, M2=10, x1_limits=(x1_min, x1_max), x2_limits=(x2_min, x2_max)
@@ -196,8 +198,8 @@ def compute_2d_cubic_spline_basis(
     boundary_knots_x1 = torch.tensor([x1_min, x1_max])
     boundary_knots_x2 = torch.tensor([x2_min, x2_max])
 
-    basis_x1 = PC.spline.bs(x[:, 0], knots_x1, boundary_knots_x1)
-    basis_x2 = PC.spline.bs(x[:, 1], knots_x2, boundary_knots_x2)
+    basis_x1 = pccg.spline.bs(x[:, 0], knots_x1, boundary_knots_x1)
+    basis_x2 = pccg.spline.bs(x[:, 1], knots_x2, boundary_knots_x2)
 
     basis = basis_x1[:, :, None] * basis_x2[:, None, :]
     basis = basis.reshape(-1, M1 * M2)
@@ -208,26 +210,32 @@ basis_data = compute_2d_cubic_spline_basis(x_data)
 basis_noise = compute_2d_cubic_spline_basis(x_noise)
 log_q_data = compute_log_q(x_data)
 log_q_noise = compute_log_q(x_noise)
-theta, dF = PC.NCE(log_q_noise, log_q_data, basis_noise, basis_data)
 
-#### plot the learned energy function
-basis_grid = compute_2d_cubic_spline_basis(x_grid)
-U_grid = torch.matmul(basis_grid, theta)
-U_grid = U_grid.reshape((grid_size, grid_size))
 
-U_grid = U_grid - U_grid.min() + U.min()
-U_grid[U_grid > 9] = 9
-fig, axes = plt.subplots()
-plt.contourf(
-    U_grid.T.numpy(),
-    levels=np.linspace(-9, 9, 19),
-    extent=(x1_min, x1_max, x2_min, x2_max),
-    cmap=cm.viridis_r,
-)
-plt.xlabel(r"$x_1$", fontsize=24)
-plt.ylabel(r"$x_2$", fontsize=24)
-plt.colorbar()
-axes.set_aspect("equal")
-plt.tight_layout()
-plt.savefig("./data/learned_potential.png")
-plt.close()
+for max_iter in range(0, 30, 1):
+    print("max_iter = ", max_iter, flush=True)
+    theta, dF = pccg.NCE(log_q_noise, log_q_data, basis_noise, basis_data,
+                        options = {"maxiter": max_iter})
+
+    #### plot the learned energy function
+    basis_grid = compute_2d_cubic_spline_basis(x_grid)
+    U_grid = torch.matmul(basis_grid, theta)
+    U_grid = U_grid.reshape((grid_size, grid_size))
+
+    U_grid = U_grid - U_grid.min() + U.min()
+    U_grid[U_grid > 9] = 9
+    fig, axes = plt.subplots()
+    plt.contourf(
+        U_grid.T.numpy(),
+        levels=np.linspace(-9, 9, 19),
+        extent=(x1_min, x1_max, x2_min, x2_max),
+        cmap=cm.viridis_r,
+    )
+    plt.xlabel(r"$x_1$", fontsize=24)
+    plt.ylabel(r"$x_2$", fontsize=24)
+    plt.colorbar()
+    axes.set_aspect("equal")
+    plt.tight_layout()
+    os.makedirs("./data/learned_potential", exist_ok=True)
+    plt.savefig(f"./data/learned_potential/iter_{max_iter:0>3}.png")
+    plt.close()
