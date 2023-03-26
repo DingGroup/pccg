@@ -1,73 +1,84 @@
 #### define the Muller potential
 import torch
+import sys
+sys.path.append("./")
+from potentials.MullerPotential import MullerPotential
+from sys import exit
 
-def compute_Muller_potential(scale, x):
-    A = (-200.0, -100.0, -170.0, 15.0)
-    beta = (0.0, 0.0, 11.0, 0.6)
-    alpha_gamma = (
-        x.new_tensor([-1.0, -10.0]),
-        x.new_tensor([-1.0, -10.0]),
-        x.new_tensor([-6.5, -6.5]),
-        x.new_tensor([0.7, 0.7]),
-    )
-
-    ab = (
-        x.new_tensor([1.0, 0.0]),
-        x.new_tensor([0.0, 0.5]),
-        x.new_tensor([-0.5, 1.5]),
-        x.new_tensor([-1.0, 1.0]),
-    )
-
-    U = 0
-    for i in range(4):
-        diff = x - ab[i]
-        U = U + A[i] * torch.exp(
-            torch.sum(alpha_gamma[i] * diff**2, -1) + beta[i] * torch.prod(diff, -1)
-        )
-
-    U = scale * U
-    return U
-
-
-#### plot the Muller potential
-import matplotlib.pyplot as plt
-from matplotlib import cm
-import numpy as np
-
-def generate_grid(x1_min, x1_max, x2_min, x2_max, size=100):
-    x1 = torch.linspace(x1_min, x1_max, size)
-    x2 = torch.linspace(x2_min, x2_max, size)
-    grid_x1, grid_x2 = torch.meshgrid(x1, x2, indexing="ij")
-    grid = torch.stack([grid_x1, grid_x2], dim=-1)
-    x = grid.reshape((-1, 2))
-    return x
-
+scale = 0.05
+mu = MullerPotential(scale)
+mu.plot_to("./data/mp.png")
 
 x1_min, x1_max = -1.5, 1.0
 x2_min, x2_max = -0.5, 2.0
 
-grid_size = 100
-x_grid = generate_grid(x1_min, x1_max, x2_min, x2_max, grid_size)
-fig, axes = plt.subplots()
-scale = 0.05
-U = compute_Muller_potential(scale, x_grid)
-U = U.reshape(100, 100)
-U[U > 9] = 9
-U = U.T
-plt.contourf(
-    U,
-    levels=np.linspace(-9, 9, 19),
-    extent=(x1_min, x1_max, x2_min, x2_max),
-    cmap=cm.viridis_r,
-)
-plt.xlabel(r"$x_1$", fontsize=24)
-plt.ylabel(r"$x_2$", fontsize=24)
-plt.colorbar()
-axes.set_aspect("equal")
-plt.tight_layout()
-plt.savefig("./data/mp.png")
-plt.close()
-# plt.show()
+# def compute_Muller_potential(scale, x):
+#     A = (-200.0, -100.0, -170.0, 15.0)
+#     beta = (0.0, 0.0, 11.0, 0.6)
+#     alpha_gamma = (
+#         x.new_tensor([-1.0, -10.0]),
+#         x.new_tensor([-1.0, -10.0]),
+#         x.new_tensor([-6.5, -6.5]),
+#         x.new_tensor([0.7, 0.7]),
+#     )
+
+#     ab = (
+#         x.new_tensor([1.0, 0.0]),
+#         x.new_tensor([0.0, 0.5]),
+#         x.new_tensor([-0.5, 1.5]),
+#         x.new_tensor([-1.0, 1.0]),
+#     )
+
+#     U = 0
+#     for i in range(4):
+#         diff = x - ab[i]
+#         U = U + A[i] * torch.exp(
+#             torch.sum(alpha_gamma[i] * diff**2, -1) + beta[i] * torch.prod(diff, -1)
+#         )
+
+#     U = scale * U
+#     return U
+
+
+# #### plot the Muller potential
+# import matplotlib.pyplot as plt
+# from matplotlib import cm
+# import numpy as np
+
+# def generate_grid(x1_min, x1_max, x2_min, x2_max, size=100):
+#     x1 = torch.linspace(x1_min, x1_max, size)
+#     x2 = torch.linspace(x2_min, x2_max, size)
+#     grid_x1, grid_x2 = torch.meshgrid(x1, x2, indexing="ij")
+#     grid = torch.stack([grid_x1, grid_x2], dim=-1)
+#     x = grid.reshape((-1, 2))
+#     return x
+
+
+# x1_min, x1_max = -1.5, 1.0
+# x2_min, x2_max = -0.5, 2.0
+
+# grid_size = 100
+# x_grid = generate_grid(x1_min, x1_max, x2_min, x2_max, grid_size)
+# fig, axes = plt.subplots()
+# scale = 0.05
+# U = compute_Muller_potential(scale, x_grid)
+# U = U.reshape(100, 100)
+# U[U > 9] = 9
+# U = U.T
+# plt.contourf(
+#     U,
+#     levels=np.linspace(-9, 9, 19),
+#     extent=(x1_min, x1_max, x2_min, x2_max),
+#     cmap=cm.viridis_r,
+# )
+# plt.xlabel(r"$x_1$", fontsize=24)
+# plt.ylabel(r"$x_2$", fontsize=24)
+# plt.colorbar()
+# axes.set_aspect("equal")
+# plt.tight_layout()
+# plt.savefig("./data/mp.png")
+# plt.close()
+# # plt.show()
 
 #### draw samples from the Müller potential
 import os
@@ -90,6 +101,7 @@ else:
         ),
         dim=-1,
     )
+    energy = mu.compute_potential
     energy = compute_Muller_potential(1.0, x)
 
     for k in range(num_steps):
