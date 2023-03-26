@@ -70,7 +70,6 @@ plt.close()
 # plt.show()
 
 #### draw samples from the Müller potential
-
 import os
 
 if os.path.exists("./data/samples.csv"):
