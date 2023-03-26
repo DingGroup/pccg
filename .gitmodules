@@ -1,0 +1,3 @@
+[submodule "examples/MullerPotential/potentials"]
+	path = examples/MullerPotential/potentials
+	url = git@github.com:DingGroup/potentials.git
