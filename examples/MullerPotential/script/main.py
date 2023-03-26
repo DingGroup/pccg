@@ -1,6 +1,7 @@
 #### define the Muller potential
 import torch
 
+
 def compute_Muller_potential(scale, x):
     A = (-200.0, -100.0, -170.0, 15.0)
     beta = (0.0, 0.0, 11.0, 0.6)
@@ -33,6 +34,7 @@ def compute_Muller_potential(scale, x):
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
+
 
 def generate_grid(x1_min, x1_max, x2_min, x2_max, size=100):
     x1 = torch.linspace(x1_min, x1_max, size)
@@ -147,7 +149,16 @@ else:
 #### plot samples
 fig = plt.figure()
 fig.clf()
-plt.plot(x_data[::10, 0].numpy(), x_data[::10, 1].numpy(), ".", alpha=0.5)
+fig, axes = plt.subplots()
+plt.plot(
+    x_data[::50, 0].numpy(),
+    x_data[::50, 1].numpy(),
+    ".",
+    alpha=0.4,
+    markersize=4,
+    color="k",
+)
+#plt.plot(x_data[::10, 0].numpy(), x_data[::10, 1].numpy(), ".", alpha=0.5)
 plt.xlim((x1_min, x1_max))
 plt.ylim((x2_min, x2_max))
 plt.xlabel(r"$x_1$", fontsize=24)
@@ -157,6 +168,9 @@ plt.tight_layout()
 plt.savefig("./data/mp_samples.png")
 plt.close()
 # plt.show()
+
+exit()
+
 
 #### define a noise distribution and generate noise samples
 import math
@@ -176,8 +190,10 @@ x_noise = torch.stack((x1_noise, x2_noise), dim=1)
 
 #### learn an energy function
 import sys
+
 sys.path.append("../../")
 import pccg
+
 
 def compute_2d_cubic_spline_basis(
     x, M1=10, M2=10, x1_limits=(x1_min, x1_max), x2_limits=(x2_min, x2_max)
@@ -214,8 +230,9 @@ log_q_noise = compute_log_q(x_noise)
 
 for max_iter in range(0, 30, 1):
     print("max_iter = ", max_iter, flush=True)
-    theta, dF = pccg.NCE(log_q_noise, log_q_data, basis_noise, basis_data,
-                        options = {"maxiter": max_iter})
+    theta, dF = pccg.NCE(
+        log_q_noise, log_q_data, basis_noise, basis_data, options={"maxiter": max_iter}
+    )
 
     #### plot the learned energy function
     basis_grid = compute_2d_cubic_spline_basis(x_grid)
@@ -225,12 +242,30 @@ for max_iter in range(0, 30, 1):
     U_grid = U_grid - U_grid.min() + U.min()
     U_grid[U_grid > 9] = 9
     fig, axes = plt.subplots()
-    plt.contourf(
-        U_grid.T.numpy(),
-        levels=np.linspace(-9, 9, 19),
-        extent=(x1_min, x1_max, x2_min, x2_max),
-        cmap=cm.viridis_r,
+    plt.plot(
+        x_data[::50, 0].numpy(),
+        x_data[::50, 1].numpy(),
+        ".",
+        alpha=0.2,
+        markersize=4,
+        color="k",
     )
+
+    U_grid = U_grid + torch.log(torch.exp(-U_grid).sum())
+    plt.contourf(
+        -U_grid.T.numpy(),
+        levels=np.linspace(-18, -6, 13),
+        extent=(x1_min, x1_max, x2_min, x2_max),
+        cmap=cm.viridis,
+    )
+
+    # plt.contourf(
+    #     -U_grid.T.numpy(),
+    #     levels=np.linspace(-9, 9, 19),
+    #     extent=(x1_min, x1_max, x2_min, x2_max),
+    #     cmap=cm.viridis,
+    # )
+
     plt.xlabel(r"$x_1$", fontsize=24)
     plt.ylabel(r"$x_2$", fontsize=24)
     plt.colorbar()
@@ -238,4 +273,31 @@ for max_iter in range(0, 30, 1):
     plt.tight_layout()
     os.makedirs("./data/learned_potential", exist_ok=True)
     plt.savefig(f"./data/learned_potential/iter_{max_iter:0>3}.png")
+    plt.close()
+
+    fig, axes = plt.subplots()
+    plt.plot(
+        x_data[::50, 0].numpy(),
+        x_data[::50, 1].numpy(),
+        ".",
+        alpha=0.2,
+        markersize=4,
+        color="k",
+    )
+
+    P_grid = torch.exp(-U_grid)
+    P_grid = P_grid / P_grid.sum()
+    plt.contourf(
+        P_grid.T.numpy(),
+        # levels=np.linspace(-9, 9, 19),
+        extent=(x1_min, x1_max, x2_min, x2_max),
+        cmap=cm.viridis,
+    )
+    plt.xlabel(r"$x_1$", fontsize=24)
+    plt.ylabel(r"$x_2$", fontsize=24)
+    plt.colorbar()
+    axes.set_aspect("equal")
+    plt.tight_layout()
+    os.makedirs("./data/learned_potential", exist_ok=True)
+    plt.savefig(f"./data/learned_potential/prob_iter_{max_iter:0>3}.png")
     plt.close()
