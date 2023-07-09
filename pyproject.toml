@@ -10,7 +10,7 @@ authors = [
   { name="Bin Zhang", email="binz@mit.edu"}
 ]
 description = "Potential Contrasting Coarse Graining"
-readme = "README.md"
+readme = "README.rst"
 license = { file="LICENSE" }
 requires-python = ">=3.7"
 classifiers = [
