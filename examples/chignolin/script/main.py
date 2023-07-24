@@ -159,21 +159,14 @@ T = 360.47 * unit.kelvin
 kT = (k*T).value_in_unit(unit.kilojoule_per_mole)
     
 #### add bond force
-bond_force = openmm.CustomBondForce("(0.5*kb*(r - b0)^2 + alpha*log(r))*kT")
+bond_force = openmm.CustomBondForce("(0.5*kb*(r - b0)^2 + 2*log(r))*kT")
 bond_force.addGlobalParameter('kT', kT)
 bond_force.addPerBondParameter('b0')
 bond_force.addPerBondParameter('kb')
-bond_force.addPerBondParameter('alpha')
 for k in range(bonded_terms['bond']['indices'].shape[0]):
     p1,p2 = bonded_terms['bond']['indices'][k]
     b0 = bonded_terms['bond']['b0'][k]
     kb = bonded_terms['bond']['kb'][k]
-    if (p1, p2) in [(0, 1), (1, 0)]:
-        alpha = 0
-    elif (p1, p2) in [(1, 2), (2, 1)]:
-        alpha = 1
-    else:
-        alpha = 2
     bond_force.addBond(p1,p2, [b0, kb, alpha])
 bond_force.setForceGroup(0)
 sys_im.addForce(bond_force)
@@ -188,7 +181,7 @@ func = openmm.Continuous2DFunction(xsize = ua.shape[0],
                                    periodic = False)
 angle_force = openmm.CustomCompoundBondForce(
     3,
-    f"(ua(idx, angle(p1, p2, p3)) + alpha*log(sin(pi - angle(p1, p2, p3))) )*kT"
+    f"(ua(idx, angle(p1, p2, p3)) + log(sin(pi - angle(p1, p2, p3))) )*kT"
 )
 angle_force.addGlobalParameter('pi', math.pi)
 angle_force.addGlobalParameter('kT', kT)
@@ -197,11 +190,6 @@ angle_force.addPerBondParameter('idx')
 angle_force.addPerBondParameter('alpha')
 
 for k in range(bonded_terms['angle']['indices'].shape[0]):
-    p1, p2, p3 = bonded_terms['angle']['indices'][k]
-    if (p1, p2, p3) == (0, 1, 2):
-        alpha = 0.
-    else:
-        alpha = 1.
     angle_force.addBond([p1, p2, p3], [float(k), alpha])
 angle_force.setForceGroup(0)
 sys_im.addForce(angle_force)
