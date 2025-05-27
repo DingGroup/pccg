@@ -4,7 +4,6 @@ from scipy.integrate import quadrature
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-import torch
 
 def bs(x, knots, boundary_knots, degree=3, intercept=False):
     """Generate the B-spline basis matrix for a polynomial spline.
@@ -57,7 +56,6 @@ def bs(x, knots, boundary_knots, degree=3, intercept=False):
     if intercept is False:
         design_matrix = design_matrix[:, 1:]
 
-    design_matrix = torch.from_numpy(design_matrix)
 
     return design_matrix
 
@@ -65,7 +63,7 @@ def bs(x, knots, boundary_knots, degree=3, intercept=False):
 def pbs(
     x,
     knots,
-    boundary_knots=torch.tensor([-math.pi, math.pi]),
+    boundary_knots=np.array([-math.pi, math.pi]),
     degree=3,
     intercept=False,
 ):
@@ -127,8 +125,6 @@ def pbs(
     ## see https://cran.r-project.org/web/packages/crs/vignettes/spline_primer.pdf
     if intercept is False:
         design_matrix = design_matrix[:, 1:]
-
-    design_matrix = torch.from_numpy(design_matrix)
 
     return design_matrix
 
@@ -210,10 +206,10 @@ def bs_lj(r, r_min, r_max, num_of_basis, omega=False):
         omega[0, :] = 0.0
         omega[:, 0] = 0.0
 
-        return torch.from_numpy(design_matrix), torch.from_numpy(omega)
+        return design_matrix, omega
 
     else:
-        return torch.from_numpy(design_matrix)
+        return design_matrix
 
 
 def bs_rmsd(r, r_max, num_of_basis):
@@ -264,16 +260,16 @@ def bs_rmsd(r, r_max, num_of_basis):
         design_matrix.append(u)
     design_matrix = np.array(design_matrix).T
 
-    return torch.from_numpy(design_matrix)
+    return design_matrix
 
 
 if __name__ == "__main__":
     ## testing functions bs and pbs
-    knots = torch.linspace(start=-math.pi, end=math.pi, steps=10)
+    knots = np.linspace(start=-math.pi, end=math.pi, steps=10)
     knots = knots[1:-1]
-    boundary_knots = torch.tensor([-math.pi, math.pi])
+    boundary_knots = np.array([-math.pi, math.pi])
 
-    x = torch.linspace(start=-math.pi, end=math.pi, steps=200)
+    x = np.linspace(start=-math.pi, end=math.pi, steps=200)
     degree = 3
 
     design_matrix_bs = bs(x, knots, boundary_knots, degree).numpy()
@@ -299,7 +295,7 @@ if __name__ == "__main__":
     r_min, r_max = 0.3, 2.0
     num_of_basis = 12
 
-    r = torch.linspace(r_min - 0.05, r_max + 1.0, 1000)
+    r = np.linspace(r_min - 0.05, r_max + 1.0, 1000)
     design_matrix, omega = bs_lj(r, r_min, r_max, num_of_basis, True)
 
     fig, axes = plt.subplots()
@@ -319,7 +315,7 @@ if __name__ == "__main__":
     r_min, r_max = 0.0, 2.0
     num_of_basis = 12
 
-    r = torch.linspace(0.0, r_max + 1.0, 1000)
+    r = np.linspace(0.0, r_max + 1.0, 1000)
     design_matrix = bs_rmsd(r, r_max, num_of_basis)
 
     fig, axes = plt.subplots()
